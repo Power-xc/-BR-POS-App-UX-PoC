@@ -15,6 +15,18 @@ import {
 import type { CartItem, QueueItem } from "@/shared/types";
 
 // ============================================================
+// 판매량 순위 → glow 클래스 (OP.GG 스타일 통계 기반 인기 메뉴 강조)
+// ============================================================
+
+function getMenuGlowClass(salesRank?: number): string {
+  if (!salesRank) return "";
+  if (salesRank === 1) return "glow-high";
+  if (salesRank <= 3) return "glow-mid";
+  if (salesRank <= 5) return "glow-low";
+  return "";
+}
+
+// ============================================================
 // 메뉴 그리드
 // ============================================================
 
@@ -32,13 +44,13 @@ function MenuGrid({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* 카테고리 탭 */}
-      <div className="flex gap-1.5 px-4 py-2 border-b border-border bg-card shrink-0">
+      <div className="flex gap-1.5 px-4 py-3 border-b border-border bg-card shrink-0">
         {mockMenuCategories.map((cat) => (
           <button
             key={cat}
             onClick={() => onCategoryChange(cat)}
             className={`
-              px-4 py-1.5 rounded-lg text-sm font-medium transition-all
+              px-4 py-2 rounded-lg text-base font-medium transition-all
               ${activeCategory === cat
                 ? "bg-primary text-white"
                 : "bg-surface text-secondary hover:bg-[#E8E8E8]"
@@ -52,28 +64,36 @@ function MenuGrid({
 
       {/* 상품 그리드 */}
       <div className="flex-1 overflow-y-auto hide-scrollbar p-4">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2.5">
           {filtered.map((item) => (
             <button
               key={item.id}
               onClick={() => !item.soldOut && onAddToCart(item)}
               disabled={item.soldOut}
               className={`
-                bg-card rounded-xl p-3 text-left border transition-all
+                bg-card rounded-xl p-3.5 text-left border transition-all
                 ${item.soldOut
                   ? "border-border opacity-50 cursor-not-allowed"
                   : "border-border hover:border-primary hover:shadow-sm active:scale-[0.98]"
                 }
+                ${!item.soldOut ? getMenuGlowClass(item.salesRank) : ""}
               `}
             >
-              <p className="text-sm font-medium text-primary leading-tight mb-1">
+              {/* 인기 순위 배지 — OP.GG 스타일 */}
+              {item.salesRank && item.salesRank <= 3 && !item.soldOut && (
+                <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-primary mb-1.5">
+                  <span className="text-[10px]">🔥</span>
+                  {item.salesRank === 1 ? "인기 1위" : `인기 ${item.salesRank}위`}
+                </span>
+              )}
+              <p className="text-base font-semibold text-primary leading-tight mb-1">
                 {item.name}
               </p>
-              <p className="text-xs text-secondary">
+              <p className="text-sm text-secondary">
                 ₩{item.price.toLocaleString("ko-KR")}
               </p>
               {item.soldOut && (
-                <span className="mt-1 inline-block text-[10px] bg-[#F0F0F0] text-secondary px-1.5 py-0.5 rounded font-medium">
+                <span className="mt-1 inline-block text-xs bg-[#F0F0F0] text-secondary px-1.5 py-0.5 rounded font-medium">
                   품절
                 </span>
               )}
@@ -111,8 +131,8 @@ function CartPanel({
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2 text-secondary">
-        <ShoppingCart size={32} strokeWidth={1.5} />
-        <p className="text-sm">장바구니가 비어있습니다</p>
+        <ShoppingCart size={36} strokeWidth={1.5} />
+        <p className="text-base">장바구니가 비어있습니다</p>
       </div>
     );
   }
@@ -126,8 +146,8 @@ function CartPanel({
             className="flex items-center gap-2 bg-surface rounded-xl px-3 py-2.5"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-primary truncate">{item.name}</p>
-              <p className="text-xs text-secondary">
+              <p className="text-base font-medium text-primary truncate">{item.name}</p>
+              <p className="text-sm text-secondary">
                 ₩{item.price.toLocaleString("ko-KR")}
               </p>
             </div>
@@ -158,15 +178,15 @@ function CartPanel({
       {/* 합계 + 결제 */}
       <div className="shrink-0 pt-3 border-t border-border">
         <div className="flex justify-between items-center mb-3">
-          <span className="text-base font-bold text-secondary">합계</span>
+          <span className="text-lg font-bold text-secondary">합계</span>
           <div className="flex items-center gap-3">
             <button
               onClick={onClearAll}
-              className="text-xs text-[#E65100] hover:underline"
+              className="text-sm text-[#E65100] hover:underline"
             >
               전체 취소
             </button>
-            <span className="text-base font-bold text-primary">₩{total.toLocaleString("ko-KR")}</span>
+            <span className="text-lg font-bold text-primary">₩{total.toLocaleString("ko-KR")}</span>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -276,7 +296,7 @@ function QueueCard({
         </div>
       </div>
 
-      <p className="text-xs text-secondary mb-2.5 leading-relaxed">
+      <p className="text-sm text-secondary mb-2.5 leading-relaxed">
         {item.items.join(" · ")}
       </p>
 
@@ -420,12 +440,12 @@ export default function PosPage() {
       {/* POS 상단 헤더 */}
       <header className="bg-primary text-white px-5 py-3 flex items-center justify-between shrink-0">
         <div>
-          <p className="text-sm font-bold">던킨 강남본점</p>
-          <p className="text-xs text-white/50">POS v3.0</p>
+          <p className="text-base font-bold">던킨 강남본점</p>
+          <p className="text-sm text-white/50">POS v3.0</p>
         </div>
         <div className="text-right">
-          <p className="text-sm font-bold tabular-nums">09:41</p>
-          <p className="text-xs text-white/50">비 · 18°C</p>
+          <p className="text-base font-bold tabular-nums">09:41</p>
+          <p className="text-sm text-white/50">비 · 18°C</p>
         </div>
       </header>
 
@@ -449,7 +469,7 @@ export default function PosPage() {
             <button
               onClick={() => setRightPanel("cart")}
               className={`
-                flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold
+                flex-1 flex items-center justify-center gap-2 py-3.5 text-base font-semibold
                 transition-colors relative
                 ${rightPanel === "cart"
                   ? "text-primary border-b-2 border-primary -mb-px"
@@ -459,11 +479,11 @@ export default function PosPage() {
             >
               장바구니
               {cartItems.length > 0 && (
-                /* 탭 배지 — 24px, 검정 배경 (UT 피드백) */
+                /* 탭 배지 — 검정 배경 (UT 피드백) */
                 <span className="
-                  min-w-[18px] h-[18px] px-1
+                  min-w-[20px] h-[20px] px-1.5
                   bg-primary text-white
-                  text-[10px] font-bold
+                  text-xs font-bold
                   rounded-full flex items-center justify-center
                 ">
                   {cartItems.reduce((s, c) => s + c.qty, 0)}
@@ -474,7 +494,7 @@ export default function PosPage() {
             <button
               onClick={() => setRightPanel("queue")}
               className={`
-                flex-1 flex items-center justify-center gap-2 py-3 text-sm font-semibold
+                flex-1 flex items-center justify-center gap-2 py-3.5 text-base font-semibold
                 transition-colors relative
                 ${rightPanel === "queue"
                   ? "text-primary border-b-2 border-primary -mb-px"
@@ -486,8 +506,8 @@ export default function PosPage() {
               {/* 배지 — 제조중+픽업 건수 상시 노출 */}
               {(makingCount + pickupCount) > 0 && (
                 <span className={`
-                  min-w-[18px] h-[18px] px-1
-                  text-[10px] font-bold
+                  min-w-[20px] h-[20px] px-1.5
+                  text-xs font-bold
                   rounded-full flex items-center justify-center
                   ${rightPanel === "queue"
                     ? "bg-primary text-white"

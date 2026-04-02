@@ -135,14 +135,12 @@ export function computePredictions(): Record<ActionId, number> {
 
 /**
  * 확신도 → glow CSS 클래스
- * - 25% 미만: ""
- * - 25-45%: "glow-low"
- * - 45-75%: "glow-mid"
- * - 75%+:   "glow-high"
+ * - POC: 항상 최소 glow-low 표시 (OP.GG 스타일 — 통계 기반 상시 추천)
+ * - 45-75%: "glow-mid" (2.5초 pulse)
+ * - 75%+:   "glow-high" (1.8초 강한 pulse)
  */
 export function getGlowClass(confidence: number): string {
   if (confidence >= 0.75) return "glow-high";
   if (confidence >= 0.45) return "glow-mid";
-  if (confidence >= 0.25) return "glow-low";
-  return "";
+  return "glow-low"; // 히스토리 없어도 항상 최소 표시
 }

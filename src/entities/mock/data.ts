@@ -289,16 +289,20 @@ export const mockCartItems: CartItem[] = [
 
 export const mockMenuCategories = ["도넛", "음료", "커피", "샌드위치"] as const;
 
+/**
+ * salesRank: 매장 판매량 기준 순위 (없으면 glow 미표시)
+ * OP.GG 스타일 — 통계 인기 메뉴 상시 강조
+ */
 export const mockMenuItems = [
-  { id: "m1", name: "글레이즈드", price: 1800, category: "도넛", soldOut: false },
-  { id: "m2", name: "보스턴 크림", price: 2000, category: "도넛", soldOut: false },
-  { id: "m3", name: "먼치킨 10개", price: 6500, category: "도넛", soldOut: false },
+  { id: "m1", name: "글레이즈드", price: 1800, category: "도넛", soldOut: false, salesRank: 1 },
+  { id: "m2", name: "보스턴 크림", price: 2000, category: "도넛", soldOut: false, salesRank: 5 },
+  { id: "m3", name: "먼치킨 10개", price: 6500, category: "도넛", soldOut: false, salesRank: 4 },
   { id: "m4", name: "초콜릿 프로스팅", price: 2000, category: "도넛", soldOut: true },
   { id: "m5", name: "스트로베리", price: 2000, category: "도넛", soldOut: false },
   { id: "m6", name: "크루아상", price: 3500, category: "도넛", soldOut: false },
-  { id: "m7", name: "아메리카노 HOT", price: 3200, category: "커피", soldOut: false },
+  { id: "m7", name: "아메리카노 HOT", price: 3200, category: "커피", soldOut: false, salesRank: 2 },
   { id: "m8", name: "아메리카노 ICE", price: 3400, category: "커피", soldOut: false },
-  { id: "m9", name: "카페라떼 HOT", price: 3800, category: "커피", soldOut: false },
+  { id: "m9", name: "카페라떼 HOT", price: 3800, category: "커피", soldOut: false, salesRank: 3 },
   { id: "m10", name: "카페라떼 ICE", price: 4000, category: "커피", soldOut: false },
   { id: "m11", name: "카푸치노", price: 3800, category: "커피", soldOut: false },
   { id: "m12", name: "에스프레소", price: 2800, category: "커피", soldOut: false },
