@@ -15,8 +15,10 @@ export function Card({ children, className = "", onClick, urgent = false }: Card
       onClick={onClick}
       className={`
         bg-card rounded-2xl p-4
+        shadow-[var(--shadow-card-sm)]
+        transition-shadow duration-200
         ${urgent ? "ring-2 ring-error" : ""}
-        ${onClick ? "cursor-pointer active:scale-[0.99] transition-transform" : ""}
+        ${onClick ? "cursor-pointer active:scale-[0.99] hover:shadow-[var(--shadow-card-md)] transition-all" : ""}
         ${className}
       `}
     >

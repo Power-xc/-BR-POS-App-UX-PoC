@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ShoppingCart, Clock, Check, X } from "lucide-react";
+import { ShoppingCart, Clock, Check } from "lucide-react";
 import { Button } from "@/shared/ui/Button";
 import { Snackbar } from "@/shared/ui/Snackbar";
+import { useActionPredictor } from "@/shared/model/useActionPredictor";
+import { ACTIONS } from "@/shared/lib/actionPredictor";
 import {
   mockMenuItems,
   mockMenuCategories,
@@ -93,12 +95,16 @@ function CartPanel({
   onRemove,
   onClearAll,
   onPayment,
+  cardGlowClass,
+  easyGlowClass,
 }: {
   items: CartItem[];
   onQtyChange: (id: string, qty: number) => void;
   onRemove: (id: string) => void;
   onClearAll: () => void;
-  onPayment: () => void;
+  onPayment: (type: "card" | "easy") => void;
+  cardGlowClass: string;
+  easyGlowClass: string;
 }) {
   const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
 
@@ -164,10 +170,21 @@ function CartPanel({
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="secondary" size="md" fullWidth onClick={onPayment}>
+          <Button
+            variant="secondary"
+            size="md"
+            fullWidth
+            onClick={() => onPayment("easy")}
+            className={easyGlowClass}
+          >
             간편결제
           </Button>
-          <Button size="md" fullWidth onClick={onPayment}>
+          <Button
+            size="md"
+            fullWidth
+            onClick={() => onPayment("card")}
+            className={cardGlowClass}
+          >
             카드결제
           </Button>
         </div>
@@ -314,6 +331,8 @@ export default function PosPage() {
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState<(() => void) | null>(null);
 
+  const { track, glowClass } = useActionPredictor();
+
   /* 장바구니 추가 */
   const handleAddToCart = (item: (typeof mockMenuItems)[number]) => {
     setCartItems((prev) => {
@@ -350,12 +369,33 @@ export default function PosPage() {
     setSnackbar("장바구니 전체 취소");
   };
 
-  /* 결제 — Undo 스낵바 패턴 */
-  const handlePayment = () => {
+  /* 결제 — Undo 패턴 + 대기열 자동 추가 + glow 기록 */
+  const handlePayment = (type: "card" | "easy") => {
+    const actionId = type === "card" ? ACTIONS.POS_PAYMENT_CARD : ACTIONS.POS_PAYMENT_EASY;
+    track(actionId);
+
     const snapshot = [...cartItems];
+    const orderNumber = queueItems.length + 1;
+
+    /* 결제 완료 → 장바구니 상품을 대기열에 추가 */
+    const newQueueItem: QueueItem = {
+      id: `queue-${Date.now()}`,
+      orderNumber,
+      items: cartItems.map((c) => `${c.name}×${c.qty}`),
+      status: "making",
+      group: "making",
+      elapsed: "0분",
+    };
+
     setCartItems([]);
-    setLastAction(() => () => setCartItems(snapshot));
-    setSnackbar("결제 완료");
+    setQueueItems((prev) => [...prev, newQueueItem]);
+    setRightPanel("queue");
+    setLastAction(() => () => {
+      setCartItems(snapshot);
+      setQueueItems((prev) => prev.filter((q) => q.id !== newQueueItem.id));
+      setRightPanel("cart");
+    });
+    setSnackbar(`결제 완료 — #${orderNumber} 대기열 추가`);
   };
 
   /* 대기열 상태 전환 — Undo 연동 */
@@ -469,6 +509,8 @@ export default function PosPage() {
                 onRemove={handleRemove}
                 onClearAll={handleClearAll}
                 onPayment={handlePayment}
+                cardGlowClass={glowClass(ACTIONS.POS_PAYMENT_CARD)}
+                easyGlowClass={glowClass(ACTIONS.POS_PAYMENT_EASY)}
               />
             ) : (
               <QueuePanel items={queueItems} onStatusChange={handleQueueStatusChange} />

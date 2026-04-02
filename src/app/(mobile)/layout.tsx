@@ -4,15 +4,24 @@ import { BottomNav } from "@/shared/ui/BottomNav";
 export default function MobileLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col h-full max-w-md mx-auto bg-surface relative">
-      {/* 상단 상태바 영역 */}
-      <header className="bg-primary text-white px-5 pt-14 pb-4 shrink-0">
-        <div className="flex items-start justify-between">
+      {/* 상단 상태바 영역 — Flighty 다크 히어로 스타일 */}
+      <header className="bg-primary text-white px-5 pt-14 pb-5 shrink-0 rounded-b-3xl">
+        <div className="flex items-end justify-between">
           <div>
-            <p className="text-xs text-white/60 font-medium">던킨 강남본점</p>
-            <p className="text-[11px] text-white/40 mt-0.5">비 · 기온 18°C</p>
+            {/* 매장명 크게 + 던킨 오렌지 포인트 */}
+            <div className="flex items-center gap-2">
+              <p className="text-xl font-bold text-white">강남본점</p>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-dunkin/20 text-dunkin">
+                DUNKIN
+              </span>
+            </div>
+            {/* 날씨 정보 */}
+            <p className="text-xs text-white/50 mt-1">🌧 비 · 18°C</p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-white/60">09:41</p>
+            {/* 현재 시각 */}
+            <p className="text-base font-semibold text-white/80">09:41</p>
+            <p className="text-[11px] text-white/40 mt-0.5">AM</p>
           </div>
         </div>
       </header>

@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { TrendingUp, TrendingDown, Minus, Bell, ChevronRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, ChevronRight, Plus } from "lucide-react";
 import { Card, SectionHeader } from "@/shared/ui/Card";
+import { Button } from "@/shared/ui/Button";
 import { Snackbar } from "@/shared/ui/Snackbar";
+import { BottomSheet } from "@/shared/ui/BottomSheet";
+import { useActionPredictor } from "@/shared/model/useActionPredictor";
+import { ACTIONS } from "@/shared/lib/actionPredictor";
 import { mockBriefing, mockInventory, mockNotifications } from "@/entities/mock/data";
 import type { NotificationPriority } from "@/shared/types";
 
@@ -11,7 +15,7 @@ import type { NotificationPriority } from "@/shared/types";
 // AI 브리핑 카드
 // ============================================================
 
-function BriefingCard() {
+function BriefingCard({ ctaGlowClass, onCtaClick }: { ctaGlowClass: string; onCtaClick: () => void }) {
   return (
     <Card className="mb-3">
       <div className="flex items-center gap-2 mb-3">
@@ -27,29 +31,32 @@ function BriefingCard() {
       </p>
 
       {/* 핵심 수치 3개 — Hick's Law */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2 mb-4">
         {mockBriefing.highlights.map((h) => (
           <div key={h.label} className="bg-surface rounded-xl p-2.5 text-center">
+            {/* 수치 대형 타이포 — 프리미엄 대시보드 스타일 */}
             <div className="flex items-center justify-center gap-1 mb-0.5">
               {h.trend === "up" && <TrendingUp size={12} className="text-success" />}
               {h.trend === "down" && <TrendingDown size={12} className="text-error" />}
               {h.trend === "neutral" && <Minus size={12} className="text-tertiary" />}
-              <span className="text-sm font-bold text-primary">{h.value}</span>
+              <span className="text-xl font-bold tabular-nums text-primary">{h.value}</span>
             </div>
-            <span className="text-[10px] text-secondary">{h.label}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-tertiary">
+              {h.label}
+            </span>
           </div>
         ))}
       </div>
 
-      {/* 발주 승인 CTA — Z-Pattern: 카드 하단 액션 (UT 근거) */}
-      <button className="
-        w-full mt-4 h-12
-        bg-primary text-white text-sm font-semibold
-        rounded-xl flex items-center justify-center gap-2
-        hover:bg-[#1a1a1a] active:scale-[0.98] transition-all
-      ">
+      {/* 발주 승인 CTA — glow 예측형 UI 적용 */}
+      <Button
+        size="lg"
+        fullWidth
+        onClick={onCtaClick}
+        className={ctaGlowClass}
+      >
         발주 승인 →
-      </button>
+      </Button>
     </Card>
   );
 }
@@ -64,7 +71,11 @@ const statusConfig = {
   normal: { bar: "bg-success", text: "text-success", label: "정상" },
 };
 
-function InventoryLiveBoard() {
+function InventoryLiveBoard({
+  onUrgentItemClick,
+}: {
+  onUrgentItemClick: (itemName: string) => void;
+}) {
   return (
     <Card className="mb-3">
       <SectionHeader
@@ -80,12 +91,17 @@ function InventoryLiveBoard() {
       <div className="space-y-3">
         {mockInventory.map((item) => {
           const cfg = statusConfig[item.status];
-          /* 잔여 시간 퍼센트 — 시각적 바 */
           const pct =
             item.status === "urgent" ? 20 : item.status === "warning" ? 55 : 85;
+          const isUrgent = item.status === "urgent";
 
           return (
-            <div key={item.id}>
+            /* 긴급 항목 클릭 → 생산 등록 BottomSheet */
+            <div
+              key={item.id}
+              onClick={() => isUrgent && onUrgentItemClick(item.name)}
+              className={isUrgent ? "cursor-pointer" : undefined}
+            >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-semibold ${cfg.text}`}>
@@ -96,13 +112,18 @@ function InventoryLiveBoard() {
                     {item.currentStock}개
                   </span>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-semibold text-primary tabular-nums">
-                    {item.remainingTime}
-                  </span>
-                  <span className="block text-[10px] text-tertiary">
-                    소진 예상 {item.estimatedRunout}
-                  </span>
+                <div className="flex items-center gap-2">
+                  {isUrgent && (
+                    <span className="text-[10px] text-error font-medium">탭하여 등록</span>
+                  )}
+                  <div className="text-right">
+                    <span className="text-xs font-semibold text-primary tabular-nums">
+                      {item.remainingTime}
+                    </span>
+                    <span className="block text-[10px] text-tertiary">
+                      소진 예상 {item.estimatedRunout}
+                    </span>
+                  </div>
                 </div>
               </div>
               {/* 시각적 잔여량 바 */}
@@ -189,19 +210,78 @@ function NotificationList() {
 
 export default function HomePage() {
   const [snackbar, setSnackbar] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetItemName, setSheetItemName] = useState("");
+  const [productionQty, setProductionQty] = useState(12);
 
-  const handleProductionRegister = () => {
-    setSnackbar("글레이즈드 생산 등록 완료");
+  const { track, glowClass } = useActionPredictor();
+
+  /* 발주 승인 CTA */
+  const handleOrderCta = () => {
+    track(ACTIONS.HOME_ORDER_CTA);
+    setSnackbar("발주 페이지로 이동합니다");
+  };
+
+  /* 긴급 재고 항목 클릭 → 생산 등록 시트 */
+  const handleUrgentItemClick = (itemName: string) => {
+    setSheetItemName(itemName);
+    setProductionQty(12);
+    setSheetOpen(true);
+  };
+
+  /* 생산 등록 확정 */
+  const handleProductionConfirm = () => {
+    setSheetOpen(false);
+    setSnackbar(`${sheetItemName} ${productionQty}개 생산 등록 완료`);
   };
 
   return (
     <div className="h-full overflow-y-auto hide-scrollbar px-4 py-4 pb-20">
-      <BriefingCard />
-      <InventoryLiveBoard />
+      <BriefingCard
+        ctaGlowClass={glowClass(ACTIONS.HOME_ORDER_CTA)}
+        onCtaClick={handleOrderCta}
+      />
+      <InventoryLiveBoard onUrgentItemClick={handleUrgentItemClick} />
       <NotificationList />
 
-      {/* 빈 공간 확보 */}
       <div className="h-4" />
+
+      {/* 긴급 생산 등록 BottomSheet */}
+      <BottomSheet
+        isOpen={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        title={`${sheetItemName} 생산 등록`}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-secondary">
+            소진 임박 상품입니다. 생산 수량을 입력하고 등록하세요.
+          </p>
+          {/* 수량 조절 */}
+          <div className="flex items-center justify-between bg-surface rounded-2xl px-4 py-3">
+            <span className="text-sm font-medium text-primary">생산 수량</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setProductionQty(Math.max(1, productionQty - 1))}
+                className="w-9 h-9 rounded-xl bg-card border border-border flex items-center justify-center text-primary hover:bg-[#E8E8E8] transition-colors text-lg"
+              >
+                −
+              </button>
+              <span className="text-2xl font-bold tabular-nums text-primary w-10 text-center">
+                {productionQty}
+              </span>
+              <button
+                onClick={() => setProductionQty(productionQty + 1)}
+                className="w-9 h-9 rounded-xl bg-card border border-border flex items-center justify-center text-primary hover:bg-[#E8E8E8] transition-colors"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
+          </div>
+          <Button size="lg" fullWidth onClick={handleProductionConfirm}>
+            생산 등록 완료
+          </Button>
+        </div>
+      </BottomSheet>
 
       {snackbar && (
         <Snackbar

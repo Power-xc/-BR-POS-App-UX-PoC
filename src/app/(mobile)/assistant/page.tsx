@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Check } from "lucide-react";
+import { Send } from "lucide-react";
 import { Card } from "@/shared/ui/Card";
 import { Button } from "@/shared/ui/Button";
 import { Snackbar } from "@/shared/ui/Snackbar";
+import { useActionPredictor } from "@/shared/model/useActionPredictor";
+import { ACTIONS } from "@/shared/lib/actionPredictor";
 import { mockChatMessages, mockOrderDraft } from "@/entities/mock/data";
 import type { ChatMessage, OrderDraft } from "@/shared/types";
 
@@ -112,24 +114,50 @@ function ChatBubble({
 // AI 비서 페이지
 // ============================================================
 
+/** AI 응답 대기 중 dot 애니메이션 */
+function AiLoadingDots() {
+  return (
+    <div className="flex justify-start mb-3">
+      <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center shrink-0 mr-2 mt-0.5">
+        <span className="text-white text-[9px] font-bold">AI</span>
+      </div>
+      <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 bg-secondary rounded-full dot-pulse-1" />
+        <span className="w-1.5 h-1.5 bg-secondary rounded-full dot-pulse-2" />
+        <span className="w-1.5 h-1.5 bg-secondary rounded-full dot-pulse-3" />
+      </div>
+    </div>
+  );
+}
+
+/* 퀵 버튼 액션 ID 매핑 */
+const QUICK_BUTTONS = [
+  { label: "재고 얼마나 남았어?", actionId: ACTIONS.ASSISTANT_QUICK_1 },
+  { label: "이번 주 매출 알려줘", actionId: ACTIONS.ASSISTANT_QUICK_2 },
+  { label: "발주서 작성해줘", actionId: ACTIONS.ASSISTANT_QUICK_3 },
+] as const;
+
 export default function AssistantPage() {
   const [messages, setMessages] = useState<ChatMessage[]>(mockChatMessages);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const { track, glowClass } = useActionPredictor();
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isLoading]);
 
-  const handleSend = () => {
-    const text = input.trim();
-    if (!text) return;
+  const handleSend = (text?: string) => {
+    const content = (text ?? input).trim();
+    if (!content) return;
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: "user",
-      content: text,
+      content,
       timestamp: new Date().toLocaleTimeString("ko-KR", {
         hour: "2-digit",
         minute: "2-digit",
@@ -138,9 +166,11 @@ export default function AssistantPage() {
 
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    setIsLoading(true);
 
-    /* Mock AI 응답 */
+    /* Mock AI 응답 — dot 애니메이션 후 메시지 */
     setTimeout(() => {
+      setIsLoading(false);
       const aiMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -151,7 +181,7 @@ export default function AssistantPage() {
         }),
       };
       setMessages((prev) => [...prev, aiMsg]);
-    }, 800);
+    }, 1200);
   };
 
   const handleDraftApprove = (draft: OrderDraft) => {
@@ -163,6 +193,11 @@ export default function AssistantPage() {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleQuickButton = (label: string, actionId: (typeof ACTIONS)[keyof typeof ACTIONS]) => {
+    track(actionId);
+    handleSend(label);
   };
 
   return (
@@ -181,25 +216,31 @@ export default function AssistantPage() {
           <ChatBubble key={msg.id} msg={msg} onDraftApprove={handleDraftApprove} />
         ))}
 
-        {/* 예시 재고 질문 퀵 버튼 */}
-        <div className="mt-2 mb-4">
-          <p className="text-[10px] text-tertiary mb-2">예) 재고 얼마나 남았어?</p>
-          <div className="flex flex-wrap gap-2">
-            {["재고 얼마나 남았어?", "이번 주 매출 알려줘", "발주서 작성해줘"].map((q) => (
-              <button
-                key={q}
-                onClick={() => setInput(q)}
-                className="
-                  text-xs text-secondary bg-card border border-border
-                  px-3 py-1.5 rounded-full
-                  hover:bg-[#F0F0F0] active:scale-95 transition-all
-                "
-              >
-                {q}
-              </button>
-            ))}
+        {/* AI 응답 대기 중 dot 애니메이션 */}
+        {isLoading && <AiLoadingDots />}
+
+        {/* 예시 퀵 버튼 — glow 예측형 UI 적용 */}
+        {!isLoading && (
+          <div className="mt-2 mb-4">
+            <p className="text-[10px] text-tertiary mb-2">빠른 질문</p>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_BUTTONS.map(({ label, actionId }) => (
+                <button
+                  key={label}
+                  onClick={() => handleQuickButton(label, actionId)}
+                  className={`
+                    text-xs text-secondary bg-card border border-border
+                    px-3 py-1.5 rounded-full
+                    hover:bg-[#F0F0F0] active:scale-95 transition-all
+                    ${glowClass(actionId)}
+                  `}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div ref={bottomRef} />
       </div>
@@ -222,7 +263,7 @@ export default function AssistantPage() {
             />
           </div>
           <button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={!input.trim()}
             className="
               w-11 h-11 bg-primary rounded-xl

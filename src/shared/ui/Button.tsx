@@ -22,8 +22,10 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  /* lg는 rounded-full (Skip CTA 스타일), sm/md는 rounded-xl 유지 */
+  const radiusClass = size === "lg" ? "rounded-full" : "rounded-xl";
   const base =
-    "inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-150 select-none";
+    `inline-flex items-center justify-center font-semibold ${radiusClass} transition-all duration-150 select-none`;
 
   const variants = {
     primary:

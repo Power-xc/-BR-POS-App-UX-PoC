@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Info } from "lucide-react";
 import { Card } from "@/shared/ui/Card";
 import { Button } from "@/shared/ui/Button";
 import { Stepper } from "@/shared/ui/Stepper";
 import { Snackbar } from "@/shared/ui/Snackbar";
+import { CountdownBanner } from "@/shared/ui/CountdownBanner";
+import { useActionPredictor } from "@/shared/model/useActionPredictor";
+import { ACTIONS } from "@/shared/lib/actionPredictor";
 import { mockOrderItems } from "@/entities/mock/data";
 import type { OrderItem } from "@/shared/types";
 
@@ -101,6 +104,11 @@ export default function OrderPage() {
   const [approved, setApproved] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
 
+  const { track, glowClass } = useActionPredictor();
+
+  /* 발주 마감 시각 — 지금부터 25분 후 (시연용) */
+  const deadline = useMemo(() => new Date(Date.now() + 25 * 60 * 1000), []);
+
   const handleQtyChange = (id: string, qty: number) => {
     setItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, currentQty: qty } : item))
@@ -110,6 +118,7 @@ export default function OrderPage() {
   const totalQty = items.reduce((sum, item) => sum + item.currentQty, 0);
 
   const handleApproveAll = () => {
+    track(ACTIONS.ORDER_APPROVE_ALL);
     setApproved(true);
     setSnackbar(`AI 제안 일괄 승인 완료 (총 ${totalQty}개)`);
   };
@@ -124,8 +133,13 @@ export default function OrderPage() {
       <div className="mb-4">
         <h1 className="text-lg font-bold text-primary">설명 가능한 AI 발주</h1>
         <p className="text-xs text-secondary mt-0.5">
-          AI 근거를 설명하고, 수동 조정 시 제게 리스크를 실시간 시뮬레이션합니다.
+          AI 근거를 설명하고, 수동 조정 시 리스크를 실시간 시뮬레이션합니다.
         </p>
+      </div>
+
+      {/* 마감 임박 카운트다운 배너 — GCOO 스타일 */}
+      <div className="mb-4">
+        <CountdownBanner label="발주 마감까지" deadline={deadline} />
       </div>
 
       {/* 발주 아이템 목록 */}
@@ -133,13 +147,14 @@ export default function OrderPage() {
         <OrderItemCard key={item.id} item={item} onQtyChange={handleQtyChange} />
       ))}
 
-      {/* 일괄 승인 — Fitts's Law: 대형 CTA */}
+      {/* 일괄 승인 — glow 예측형 UI 적용 */}
       <div className="mt-2">
         <Button
           size="lg"
           fullWidth
           onClick={handleApproveAll}
           disabled={approved}
+          className={glowClass(ACTIONS.ORDER_APPROVE_ALL)}
         >
           {approved ? "승인 완료" : `AI 제안 일괄 승인`}
         </Button>
