@@ -91,11 +91,13 @@ function CartPanel({
   items,
   onQtyChange,
   onRemove,
+  onClearAll,
   onPayment,
 }: {
   items: CartItem[];
   onQtyChange: (id: string, qty: number) => void;
   onRemove: (id: string) => void;
+  onClearAll: () => void;
   onPayment: () => void;
 }) {
   const total = items.reduce((sum, i) => sum + i.price * i.qty, 0);
@@ -149,9 +151,17 @@ function CartPanel({
 
       {/* 합계 + 결제 */}
       <div className="shrink-0 pt-3 border-t border-border">
-        <div className="flex justify-between text-base font-bold mb-3">
-          <span className="text-secondary">합계</span>
-          <span className="text-primary">₩{total.toLocaleString("ko-KR")}</span>
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-base font-bold text-secondary">합계</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClearAll}
+              className="text-xs text-[#E65100] hover:underline"
+            >
+              전체 취소
+            </button>
+            <span className="text-base font-bold text-primary">₩{total.toLocaleString("ko-KR")}</span>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <Button variant="secondary" size="md" fullWidth onClick={onPayment}>
@@ -332,6 +342,14 @@ export default function PosPage() {
     }
   };
 
+  /* 전체 취소 — Undo 연동 */
+  const handleClearAll = () => {
+    const snapshot = [...cartItems];
+    setCartItems([]);
+    setLastAction(() => () => setCartItems(snapshot));
+    setSnackbar("장바구니 전체 취소");
+  };
+
   /* 결제 — Undo 스낵바 패턴 */
   const handlePayment = () => {
     const snapshot = [...cartItems];
@@ -449,6 +467,7 @@ export default function PosPage() {
                 items={cartItems}
                 onQtyChange={handleQtyChange}
                 onRemove={handleRemove}
+                onClearAll={handleClearAll}
                 onPayment={handlePayment}
               />
             ) : (
