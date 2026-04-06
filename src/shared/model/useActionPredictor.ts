@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   recordAction,
   computePredictions,
@@ -14,14 +14,10 @@ import {
  * - glowClass(id): 해당 액션의 현재 glow CSS 클래스
  */
 export function useActionPredictor() {
+  /* 마운트 시 즉시 예측 계산 — lazy initializer로 effect 불필요 */
   const [predictions, setPredictions] = useState<Record<ActionId, number>>(
-    () => ({} as Record<ActionId, number>)
+    () => computePredictions()
   );
-
-  /* 마운트 시 최초 예측 계산 */
-  useEffect(() => {
-    setPredictions(computePredictions());
-  }, []);
 
   /** 액션 기록 + 예측 갱신 */
   const track = useCallback((id: ActionId) => {

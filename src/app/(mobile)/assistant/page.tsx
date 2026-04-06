@@ -2,12 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Send } from "lucide-react";
-import { Card } from "@/shared/ui/Card";
 import { Button } from "@/shared/ui/Button";
 import { Snackbar } from "@/shared/ui/Snackbar";
 import { useActionPredictor } from "@/shared/model/useActionPredictor";
 import { ACTIONS } from "@/shared/lib/actionPredictor";
-import { mockChatMessages, mockOrderDraft } from "@/entities/mock/data";
+import { mockChatMessages } from "@/entities/mock/data";
 import type { ChatMessage, OrderDraft } from "@/shared/types";
 
 // ============================================================
@@ -160,7 +159,7 @@ export default function AssistantPage() {
     if (!content) return;
 
     const userMsg: ChatMessage = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       role: "user",
       content,
       timestamp: new Date().toLocaleTimeString("ko-KR", {
@@ -177,7 +176,7 @@ export default function AssistantPage() {
     setTimeout(() => {
       setIsLoading(false);
       const aiMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         role: "assistant",
         content: "확인했습니다. 잠시 후 발주서를 생성하겠습니다.",
         timestamp: new Date().toLocaleTimeString("ko-KR", {

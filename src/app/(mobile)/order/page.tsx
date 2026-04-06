@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Info } from "lucide-react";
 import { Card } from "@/shared/ui/Card";
 import { Button } from "@/shared/ui/Button";
@@ -103,8 +103,8 @@ export default function OrderPage() {
 
   const { track, glowClass } = useActionPredictor();
 
-  /* 발주 마감 시각 — 지금부터 25분 후 (시연용) */
-  const deadline = useMemo(() => new Date(Date.now() + 25 * 60 * 1000), []);
+  /* 발주 마감 시각 — 지금부터 25분 후 (시연용), lazy initializer로 마운트 1회만 계산 */
+  const [deadline] = useState(() => new Date(Date.now() + 25 * 60 * 1000));
 
   const handleQtyChange = (id: string, qty: number) => {
     setItems((prev) =>
