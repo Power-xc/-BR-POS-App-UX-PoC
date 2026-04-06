@@ -129,7 +129,7 @@ export function HomeTab({ onNavigate }: HomeTabProps) {
   const dateStr = `오늘 ${today.getMonth() + 1}월 ${today.getDate()}일 (${["일","월","화","수","목","금","토"][today.getDay()]})`;
 
   return (
-    <div className="p-5 max-w-5xl space-y-5">
+    <div className="p-6 space-y-5">
       {/* AI 데일리 브리핑 */}
       <section>
         <div className="flex items-center gap-2 mb-3">

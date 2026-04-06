@@ -379,7 +379,7 @@ export function OrderTab({ onNavigate }: OrderTabProps) {
   };
 
   return (
-    <div className="p-5 max-w-4xl space-y-4">
+    <div className="p-6 space-y-4">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-2">
         <h2 className="text-lg font-bold text-primary">발주 관리</h2>

@@ -232,7 +232,7 @@ export function NoticeTab() {
   const cautionCount = cautionNotices.filter((n) => !readIds.has(n.id)).length;
 
   return (
-    <div className="p-5 max-w-4xl space-y-4">
+    <div className="p-6 space-y-4">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-2">
         <h2 className="text-lg font-bold text-primary">AI 공지 요약</h2>
