@@ -18,11 +18,15 @@ import type { OrderItem } from "@/shared/types";
 
 function AiScoreBar({ score }: { score: number }) {
   const color =
-    score >= 70 ? "bg-primary" : score >= 40 ? "bg-warning-neutral" : "bg-info-neutral";
+    score >= 70
+      ? "bg-primary"
+      : score >= 40
+        ? "bg-warning-neutral"
+        : "bg-info-neutral";
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
+      <div className="flex-1 h-2 bg-[#F0F0F0] rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${color}`}
           style={{ width: `${score}%` }}
@@ -46,8 +50,6 @@ function OrderItemCard({
   item: OrderItem;
   onQtyChange: (id: string, qty: number) => void;
 }) {
-  const [showDetail, setShowDetail] = useState(false);
-
   return (
     <Card className="mb-3">
       {/* 상품명 + AI 점수 */}
@@ -59,29 +61,24 @@ function OrderItemCard({
       <AiScoreBar score={item.aiScore} />
 
       {/* AI 근거 — 점주 언어로 변환 (UT 핵심: 기술 언어 금지) */}
-      <div
-        className="flex items-start gap-2 mt-3 bg-surface rounded-xl p-3 cursor-pointer"
-        onClick={() => setShowDetail(!showDetail)}
-      >
-        <Info size={14} className="text-secondary mt-0.5 shrink-0" />
-        <p className="text-xs text-secondary leading-relaxed flex-1">
+      <div className="flex items-center gap-2 mt-3 bg-surface rounded-sm p-3 cursor-pointer tracking-tight">
+        <Info size={14} className="text-secondary shrink-0" />
+        <p className="text-xs text-primary flex-1 leading-1.4">
           {item.aiReason}
         </p>
       </div>
 
       {/* 전주/전전주 비교 — 상세 토글 */}
-      {showDetail && (
-        <div className="mt-2 px-3 py-2 bg-[#FAFAFA] rounded-xl">
-          <div className="flex justify-between text-xs text-secondary">
-            <span>전주 동요일</span>
-            <span className="font-medium text-primary">{item.lastWeekQty}개</span>
-          </div>
-          <div className="flex justify-between text-xs text-secondary mt-1">
-            <span>전전주 동요일</span>
-            <span className="font-medium text-primary">{item.prevWeekQty}개</span>
-          </div>
+      <div className="mt-2 px-3 py-2 bg-[#EDEFFA] rounded-sm">
+        <div className="flex justify-between text-xs text-secondary text-[#333]">
+          <span>전주 동요일</span>
+          <span className="font-medium text-[#333]">{item.lastWeekQty}개</span>
         </div>
-      )}
+        <div className="flex justify-between text-xs text-secondary mt-1 text-[#333]">
+          <span>전전주 동요일</span>
+          <span className="font-medium text-[#333]">{item.prevWeekQty}개</span>
+        </div>
+      </div>
 
       {/* 수량 조절 — 수동 조정 (점주 최종 결정권 유지) */}
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
@@ -111,7 +108,9 @@ export default function OrderPage() {
 
   const handleQtyChange = (id: string, qty: number) => {
     setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, currentQty: qty } : item))
+      prev.map((item) =>
+        item.id === id ? { ...item, currentQty: qty } : item,
+      ),
     );
   };
 
@@ -144,7 +143,11 @@ export default function OrderPage() {
 
       {/* 발주 아이템 목록 */}
       {items.map((item) => (
-        <OrderItemCard key={item.id} item={item} onQtyChange={handleQtyChange} />
+        <OrderItemCard
+          key={item.id}
+          item={item}
+          onQtyChange={handleQtyChange}
+        />
       ))}
 
       {/* 일괄 승인 — glow 예측형 UI 적용 */}

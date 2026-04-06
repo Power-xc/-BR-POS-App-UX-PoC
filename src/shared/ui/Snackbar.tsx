@@ -37,7 +37,7 @@ export function Snackbar({
     }, 100);
 
     return () => clearInterval(interval);
-  }, [visible, onDismiss]);
+  }, [duration, onDismiss]);
 
   /** 탭 시 타이머 연장 (UT 피드백 반영) */
   const handleExtend = () => {

@@ -34,7 +34,9 @@ function OrderDraftCard({
         {draft.items.map((item, idx) => (
           <div key={idx} className="flex justify-between text-xs">
             <span className="text-secondary">{item.name}</span>
-            <span className="font-medium text-primary tabular-nums">{item.qty}개</span>
+            <span className="font-medium text-primary tabular-nums">
+              {item.qty}개
+            </span>
           </div>
         ))}
       </div>
@@ -79,15 +81,18 @@ function ChatBubble({
 
       <div className={`max-w-[78%] ${isUser ? "" : ""}`}>
         {!isUser && (
-          <span className="text-[10px] text-secondary mb-1 block">AI AGENT</span>
+          <span className="text-[10px] text-secondary mb-1 block">
+            AI AGENT
+          </span>
         )}
 
         <div
           className={`
             rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed
-            ${isUser
-              ? "bg-primary text-white rounded-tr-sm"
-              : "bg-card text-primary rounded-tl-sm border border-border"
+            ${
+              isUser
+                ? "bg-primary text-white rounded-tr-sm"
+                : "bg-card text-primary rounded-tl-sm border border-border"
             }
           `}
         >
@@ -185,7 +190,9 @@ export default function AssistantPage() {
   };
 
   const handleDraftApprove = (draft: OrderDraft) => {
-    setSnackbar(`발주서 #${draft.id} 승인 완료 — ₩${draft.totalAmount.toLocaleString("ko-KR")}`);
+    setSnackbar(
+      `발주서 #${draft.id} 승인 완료 — ₩${draft.totalAmount.toLocaleString("ko-KR")}`,
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -195,7 +202,10 @@ export default function AssistantPage() {
     }
   };
 
-  const handleQuickButton = (label: string, actionId: (typeof ACTIONS)[keyof typeof ACTIONS]) => {
+  const handleQuickButton = (
+    label: string,
+    actionId: (typeof ACTIONS)[keyof typeof ACTIONS],
+  ) => {
     track(actionId);
     handleSend(label);
   };
@@ -213,7 +223,11 @@ export default function AssistantPage() {
       {/* 채팅 메시지 영역 */}
       <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-2">
         {messages.map((msg) => (
-          <ChatBubble key={msg.id} msg={msg} onDraftApprove={handleDraftApprove} />
+          <ChatBubble
+            key={msg.id}
+            msg={msg}
+            onDraftApprove={handleDraftApprove}
+          />
         ))}
 
         {/* AI 응답 대기 중 dot 애니메이션 */}
@@ -282,10 +296,7 @@ export default function AssistantPage() {
       </div>
 
       {snackbar && (
-        <Snackbar
-          message={snackbar}
-          onDismiss={() => setSnackbar(null)}
-        />
+        <Snackbar message={snackbar} onDismiss={() => setSnackbar(null)} />
       )}
     </div>
   );

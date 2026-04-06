@@ -50,7 +50,7 @@ function MenuGrid({
             key={cat}
             onClick={() => onCategoryChange(cat)}
             className={`
-              px-4 py-2 rounded-lg text-base font-medium transition-all
+              px-4 py-2 rounded-xl text-base font-medium transition-all
               ${activeCategory === cat
                 ? "bg-primary text-white"
                 : "bg-surface text-secondary hover:bg-[#E8E8E8]"
@@ -64,14 +64,14 @@ function MenuGrid({
 
       {/* 상품 그리드 */}
       <div className="flex-1 overflow-y-auto hide-scrollbar p-4">
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-6 gap-2.5">
           {filtered.map((item) => (
             <button
               key={item.id}
               onClick={() => !item.soldOut && onAddToCart(item)}
               disabled={item.soldOut}
               className={`
-                bg-card rounded-xl p-3.5 text-left border transition-all
+                bg-card rounded-sm p-3.5 text-left border transition-all
                 ${item.soldOut
                   ? "border-border opacity-50 cursor-not-allowed"
                   : "border-border hover:border-primary hover:shadow-sm active:scale-[0.98]"

@@ -5,7 +5,7 @@ export default function MobileLayout({ children }: { children: React.ReactNode }
   return (
     <div className="flex flex-col h-full max-w-md mx-auto bg-surface relative">
       {/* 상단 상태바 영역 — Flighty 다크 히어로 스타일 */}
-      <header className="bg-primary text-white px-5 pt-14 pb-5 shrink-0 rounded-b-3xl">
+      <header className="bg-primary text-white px-5 pt-5 pb-5 shrink-0 rounded-b-3xl">
         <div className="flex items-end justify-between">
           <div>
             {/* 매장명 크게 + 던킨 오렌지 포인트 */}
