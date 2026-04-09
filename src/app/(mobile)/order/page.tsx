@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Info } from "lucide-react";
 import { Card } from "@/shared/ui/Card";
 import { Button } from "@/shared/ui/Button";
@@ -11,6 +11,7 @@ import { useActionPredictor } from "@/shared/model/useActionPredictor";
 import { ACTIONS } from "@/shared/lib/actionPredictor";
 import { mockOrderItems } from "@/entities/mock/data";
 import type { OrderItem } from "@/shared/types";
+import { getPocOrderOptions, postPocOrderConfirm } from "@/shared/api/poc";
 
 // ============================================================
 // AI 점수 바 — 시각적 신뢰도 표시
@@ -106,6 +107,36 @@ export default function OrderPage() {
   /* 발주 마감 시각 — 지금부터 25분 후 (시연용), lazy initializer로 마운트 1회만 계산 */
   const [deadline] = useState(() => new Date(Date.now() + 25 * 60 * 1000));
 
+  useEffect(() => {
+    // PoC 백엔드 연동: 3안 추천 결과에서 "기본 추천 수량"을 가져와 현재 UI 카드 형태에 매핑한다.
+    // UI/UX 결(카드/스테퍼/근거 텍스트)은 유지하고 데이터만 실제 DB 기반으로 움직이게 한다.
+    getPocOrderOptions()
+      .then((res) => {
+        const mapped: OrderItem[] = (res.products || []).slice(0, 8).map((p) => {
+          const lastWeek = p.options?.find((o) => o.code === "LAST_WEEK_SAME_DOW");
+          const twoWeeks = p.options?.find((o) => o.code === "TWO_WEEKS_SAME_DOW");
+          const aiScore = Math.max(
+            10,
+            Math.min(95, 100 - Math.round((p.current_stock || 0) * 4) - Math.round((p.stockout_minutes || 0) / 3))
+          );
+          return {
+            id: p.product_id,
+            name: p.product_name,
+            aiScore,
+            aiReason: lastWeek?.rationale || p.options?.[0]?.rationale || "최근 판매 패턴을 기반으로 권장 수량을 계산했습니다.",
+            recommendedQty: p.default_recommended_qty,
+            currentQty: p.default_recommended_qty,
+            lastWeekQty: Math.round(lastWeek?.recommended_order_qty ?? p.default_recommended_qty),
+            prevWeekQty: Math.round(twoWeeks?.recommended_order_qty ?? p.default_recommended_qty),
+          };
+        });
+        if (mapped.length) setItems(mapped);
+      })
+      .catch(() => {
+        // 실패 시 기존 mock 유지
+      });
+  }, []);
+
   const handleQtyChange = (id: string, qty: number) => {
     setItems((prev) =>
       prev.map((item) =>
@@ -114,12 +145,24 @@ export default function OrderPage() {
     );
   };
 
-  const totalQty = items.reduce((sum, item) => sum + item.currentQty, 0);
+  const totalQty = useMemo(() => items.reduce((sum, item) => sum + item.currentQty, 0), [items]);
 
-  const handleApproveAll = () => {
+  const handleApproveAll = async () => {
     track(ACTIONS.ORDER_APPROVE_ALL);
     setApproved(true);
     setSnackbar(`AI 제안 일괄 승인 완료 (총 ${totalQty}개)`);
+    // PoC write-back: 승인 결과를 DB(order_request)에 기록해 "동작하는 기능"으로 만든다.
+    // (디자이너/개발자 추적 가능하도록 명시)
+    try {
+      await postPocOrderConfirm({
+        draft_id: "",
+        items: items.map((i) => ({ name: i.name, qty: i.currentQty })),
+        total_amount: undefined,
+      });
+    } catch {
+      // UI는 이미 승인 피드백을 보여주므로, 실패는 방해하지 않고 스낵바로만 안내한다.
+      setSnackbar("승인 기록 저장에 실패했습니다. 네트워크 상태를 확인해 주세요.");
+    }
   };
 
   const handleUndo = () => {

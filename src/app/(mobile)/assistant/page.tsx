@@ -6,8 +6,8 @@ import { Button } from "@/shared/ui/Button";
 import { Snackbar } from "@/shared/ui/Snackbar";
 import { useActionPredictor } from "@/shared/model/useActionPredictor";
 import { ACTIONS } from "@/shared/lib/actionPredictor";
-import { mockChatMessages } from "@/entities/mock/data";
 import type { ChatMessage, OrderDraft } from "@/shared/types";
+import { postPocChat } from "@/shared/api/poc";
 
 // ============================================================
 // 발주서 초안 카드 — 채팅 인라인
@@ -69,6 +69,14 @@ function ChatBubble({
   onDraftApprove: (draft: OrderDraft) => void;
 }) {
   const isUser = msg.role === "user";
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    // Hydration mismatch 방지:
+    // 서버/클라이언트의 로케일(AM/PM, '오후') 차이로 timestamp 텍스트가 달라질 수 있어
+    // timestamp는 클라이언트에서만 렌더링한다. (UI 구조는 유지)
+    setIsClient(true);
+  }, []);
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-3`}>
@@ -106,12 +114,138 @@ function ChatBubble({
           />
         )}
 
-        <span className="text-[10px] text-tertiary mt-1 block text-right">
-          {msg.timestamp}
+        {/* PoC: 백엔드 구조화 블록(표/차트/콜아웃) 렌더링 */}
+        {"ui" in (msg as any) && (msg as any).ui?.blocks && (
+          <div className="mt-2 space-y-2">
+            {(msg as any).ui.blocks.map((b: any, idx: number) => (
+              <StructuredBlock key={idx} block={b} />
+            ))}
+          </div>
+        )}
+
+        <span
+          className="text-[10px] text-tertiary mt-1 block text-right"
+          suppressHydrationWarning
+        >
+          {isClient ? msg.timestamp : ""}
         </span>
       </div>
     </div>
   );
+}
+
+// ============================================================
+// 구조화 블록 렌더러 (표/차트/콜아웃)
+// ============================================================
+
+function formatCell(v: unknown) {
+  if (typeof v === "number") return v.toLocaleString("ko-KR");
+  if (v == null) return "—";
+  return String(v);
+}
+
+function StructuredBlock({ block }: { block: any }) {
+  if (block?.type === "callouts") {
+    return (
+      <div className="bg-surface border border-border rounded-xl p-3">
+        <p className="text-xs font-semibold text-primary mb-2">{block.title || "인사이트"}</p>
+        <div className="space-y-2">
+          {(block.items || []).map((it: any, i: number) => (
+            <div key={i} className="bg-card border border-border rounded-lg p-2.5">
+              <p className="text-xs font-semibold text-primary">{it.title}</p>
+              {it.evidence && <p className="text-[11px] text-secondary mt-0.5">{it.evidence}</p>}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (block?.type === "table") {
+    return (
+      <div className="bg-surface border border-border rounded-xl p-3 overflow-hidden">
+        <p className="text-xs font-semibold text-primary mb-2">{block.title || "표"}</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="text-tertiary bg-card">
+                {(block.columns || []).map((c: any) => (
+                  <th
+                    key={c.key}
+                    className={`
+                      font-semibold py-1.5 px-2 whitespace-nowrap
+                      ${typeof (block.rows?.[0]?.[c.key]) === "number" ? "text-right" : "text-left"}
+                    `}
+                  >
+                    {c.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="text-secondary">
+              {(block.rows || []).slice(0, 10).map((r: any, i: number) => (
+                <tr key={i} className={`border-t border-border/60 ${i % 2 === 1 ? "bg-card/50" : ""}`}>
+                  {(block.columns || []).map((c: any) => (
+                    <td
+                      key={c.key}
+                      className={`
+                        py-1.5 px-2 whitespace-nowrap
+                        ${typeof (r?.[c.key]) === "number" ? "text-right tabular-nums" : "text-left"}
+                      `}
+                    >
+                      {formatCell(r?.[c.key])}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  if (block?.type === "chart_line") {
+    const series = (block.series || []) as any[];
+    const xKey = block.xKey || "x";
+    const yKey = (block.yKeys || [])[0];
+    const vals = series.map((p) => Number(p?.[yKey] || 0));
+    const min = Math.min(...vals, 0);
+    const max = Math.max(...vals, 1);
+    const pts = series
+      .map((p, i) => {
+        const x = series.length <= 1 ? 0 : (i / (series.length - 1)) * 100;
+        const y = 100 - ((Number(p?.[yKey] || 0) - min) / (max - min)) * 100;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      })
+      .join(" ");
+    const last = series[series.length - 1];
+
+    return (
+      <div className="bg-surface border border-border rounded-xl p-3">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-primary">{block.title || "추이"}</p>
+          <p className="text-[10px] text-tertiary">
+            {last?.[xKey] ? String(last[xKey]).slice(0, 10) : ""}
+          </p>
+        </div>
+        <svg viewBox="0 0 100 100" className="w-full h-20">
+          <polyline
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            className="text-primary"
+            points={pts}
+          />
+        </svg>
+        <p className="text-[11px] text-secondary mt-1">
+          최신 {yKey}: <span className="font-semibold text-primary">{formatCell(last?.[yKey])}</span>
+        </p>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 // ============================================================
@@ -142,11 +276,19 @@ const QUICK_BUTTONS = [
 ] as const;
 
 export default function AssistantPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>(mockChatMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: "안녕하세요! 던킨 AI 비서입니다. 자연어로 업무를 지시해 주세요.",
+      timestamp: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+    },
+  ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [snackbar, setSnackbar] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [sessionId, setSessionId] = useState<string>("");
 
   const { track, glowClass } = useActionPredictor();
 
@@ -154,7 +296,7 @@ export default function AssistantPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
 
-  const handleSend = (text?: string) => {
+  const handleSend = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content) return;
 
@@ -172,26 +314,47 @@ export default function AssistantPage() {
     setInput("");
     setIsLoading(true);
 
-    /* Mock AI 응답 — dot 애니메이션 후 메시지 */
-    setTimeout(() => {
-      setIsLoading(false);
+    // PoC 백엔드 연동(실제 AI 실행):
+    // - 기존 UI(버블/초안 카드) 구조는 유지하고, 응답만 실제 `/api/poc/chat` 결과로 치환한다.
+    // - AI API 키 미설정/네트워크 제한 등으로 실패할 수 있으므로, 에러 버블로 우아하게 처리한다.
+    try {
+      const res = await postPocChat({
+        message: content,
+        session_id: sessionId || undefined,
+        channel: "full",
+        current_page: "/assistant",
+      });
+      if (!sessionId && res.session_id) setSessionId(res.session_id);
+
       const aiMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: "확인했습니다. 잠시 후 발주서를 생성하겠습니다.",
-        timestamp: new Date().toLocaleTimeString("ko-KR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
+        content: res.answer || "답변을 생성하지 못했습니다.",
+        timestamp: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+        // PoC: 백엔드가 order_draft를 내려줄 때만 초안 카드 렌더
+        draft: res.ui?.order_draft as unknown as OrderDraft | undefined,
       };
+      // PoC 확장 필드(ui.blocks): 표/차트 렌더링에 사용 (타 개발자 추적용)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (aiMsg as any).ui = res.ui;
       setMessages((prev) => [...prev, aiMsg]);
-    }, 1200);
+    } catch {
+      const errMsg: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: "잠시 후 다시 시도해 주세요. (네트워크/AI 설정 문제로 응답을 받지 못했어요)",
+        timestamp: new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => [...prev, errMsg]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDraftApprove = (draft: OrderDraft) => {
-    setSnackbar(
-      `발주서 #${draft.id} 승인 완료 — ₩${draft.totalAmount.toLocaleString("ko-KR")}`,
-    );
+    // UX 유지: 승인 CTA는 즉시 피드백을 주고,
+    // 실제 DB write-back은 주문 화면(발주 탭)에서 확정 처리로 이어지도록 한다.
+    setSnackbar(`발주서 #${draft.id} 승인 완료 — ₩${draft.totalAmount.toLocaleString("ko-KR")}`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

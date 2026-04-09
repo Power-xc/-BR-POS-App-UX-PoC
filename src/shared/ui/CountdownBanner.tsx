@@ -24,11 +24,16 @@ function formatRemaining(seconds: number): string {
  * - 전폭 rounded-2xl 컬러 배너
  */
 export function CountdownBanner({ label, deadline }: CountdownBannerProps) {
+  const [isClient, setIsClient] = useState(false);
   const [remaining, setRemaining] = useState<number>(() =>
     Math.max(0, Math.floor((deadline.getTime() - Date.now()) / 1000))
   );
 
   useEffect(() => {
+    // Hydration mismatch 방지:
+    // SSR 시점과 CSR 시점의 1초 차이로 25:00 ↔ 24:59 처럼 텍스트가 달라질 수 있어
+    // 카운트다운 숫자는 클라이언트에서만 렌더링한다.
+    setIsClient(true);
     const id = setInterval(() => {
       setRemaining(Math.max(0, Math.floor((deadline.getTime() - Date.now()) / 1000)));
     }, 1000);
@@ -74,8 +79,8 @@ export function CountdownBanner({ label, deadline }: CountdownBannerProps) {
         <span className="text-sm font-medium">{label}</span>
       </div>
       {/* 카운트다운 숫자 — 우측 */}
-      <span className={`text-base tabular-nums ${s.num}`}>
-        {formatRemaining(remaining)}
+      <span className={`text-base tabular-nums ${s.num}`} suppressHydrationWarning>
+        {isClient ? formatRemaining(remaining) : ""}
       </span>
     </div>
   );

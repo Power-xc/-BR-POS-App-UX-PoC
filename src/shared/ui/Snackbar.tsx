@@ -15,6 +15,10 @@ interface SnackbarProps {
  * Undo 스낵바 — "Not Confirm" 패턴
  * UT 결과: 확인 팝업 반복은 피크타임 운영 속도 저해
  * "일단 실행, 8초 내 Undo" → 안정감 + 속도 동시 확보
+ *
+ * 변경 이력: 타이머 만료 시 onDismiss 를 setRemaining 업데이터 내부에서 직접 호출하면
+ * 부모(예: HomePage) setState 가 자식 업데이트 중에 실행되어 React 19 hydration 경고가 난다.
+ * queueMicrotask(onDismiss) 로 같은 틱 밖으로 미룸.
  */
 export function Snackbar({
   message,
@@ -29,7 +33,8 @@ export function Snackbar({
       setRemaining((prev) => {
         if (prev <= 100) {
           clearInterval(interval);
-          onDismiss();
+          // 부모 setState는 자식 setState 업데이터 안에서 호출하면 안 됨 (React 19)
+          queueMicrotask(onDismiss);
           return 0;
         }
         return prev - 100;

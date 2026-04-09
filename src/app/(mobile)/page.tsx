@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TrendingUp, TrendingDown, Minus, ChevronRight, Plus } from "lucide-react";
 import { Card, SectionHeader } from "@/shared/ui/Card";
 import { Button } from "@/shared/ui/Button";
@@ -10,12 +10,21 @@ import { useActionPredictor } from "@/shared/model/useActionPredictor";
 import { ACTIONS } from "@/shared/lib/actionPredictor";
 import { mockBriefing, mockInventory, mockNotifications } from "@/entities/mock/data";
 import type { NotificationPriority } from "@/shared/types";
+import { getPocMobileHome, type PocMobileHomeResponse } from "@/shared/api/poc";
 
 // ============================================================
 // AI 브리핑 카드
 // ============================================================
 
-function BriefingCard({ ctaGlowClass, onCtaClick }: { ctaGlowClass: string; onCtaClick: () => void }) {
+function BriefingCard({
+  briefing,
+  ctaGlowClass,
+  onCtaClick,
+}: {
+  briefing: PocMobileHomeResponse["briefing"];
+  ctaGlowClass: string;
+  onCtaClick: () => void;
+}) {
   return (
     <Card className="mb-3">
       <div className="flex items-center gap-2 mb-3">
@@ -27,18 +36,18 @@ function BriefingCard({ ctaGlowClass, onCtaClick }: { ctaGlowClass: string; onCt
 
       {/* NLP 텍스트 요약 — 그래프 대신 문장 (UT: 4.2분→28초) */}
       <p className="text-sm text-primary leading-relaxed italic mb-4">
-        {mockBriefing.summary}
+        {briefing.summary}
       </p>
 
       {/* 핵심 수치 3개 — Hick's Law */}
       <div className="grid grid-cols-3 gap-2 mb-4">
-        {mockBriefing.highlights.map((h) => (
+        {briefing.highlights.map((h) => (
           <div key={h.label} className="bg-surface rounded-xl p-2.5 text-center">
             {/* 수치 대형 타이포 — 프리미엄 대시보드 스타일 */}
             <div className="flex items-center justify-center gap-1 mb-0.5">
               {h.trend === "up" && <TrendingUp size={12} className="text-success" />}
               {h.trend === "down" && <TrendingDown size={12} className="text-error" />}
-              {h.trend === "neutral" && <Minus size={12} className="text-tertiary" />}
+              {/* UX(디자이너 피드백 반영): neutral에 Minus 아이콘을 붙이면 값이 음수로 오해될 수 있어 숨김 */}
               <span className="text-xl font-bold tabular-nums text-primary">{h.value}</span>
             </div>
             <span className="text-[10px] font-semibold uppercase tracking-widest text-tertiary">
@@ -72,8 +81,10 @@ const statusConfig = {
 };
 
 function InventoryLiveBoard({
+  items,
   onUrgentItemClick,
 }: {
+  items: PocMobileHomeResponse["inventory"];
   onUrgentItemClick: (itemName: string) => void;
 }) {
   return (
@@ -89,7 +100,7 @@ function InventoryLiveBoard({
       />
 
       <div className="space-y-3">
-        {mockInventory.map((item) => {
+        {items.map((item) => {
           const cfg = statusConfig[item.status];
           const pct =
             item.status === "urgent" ? 20 : item.status === "warning" ? 55 : 85;
@@ -154,8 +165,8 @@ const priorityConfig: Record<
   info: { dot: "bg-info-neutral", bg: "bg-card", label: "정보" },
 };
 
-function NotificationList() {
-  const unread = mockNotifications.filter((n) => !n.isRead);
+function NotificationList({ items }: { items: PocMobileHomeResponse["notifications"] }) {
+  const unread = items.filter((n) => !n.isRead);
 
   return (
     <Card>
@@ -214,7 +225,34 @@ export default function HomePage() {
   const [sheetItemName, setSheetItemName] = useState("");
   const [productionQty, setProductionQty] = useState(12);
 
+  const [homeData, setHomeData] = useState<PocMobileHomeResponse | null>(null);
+
   const { track, glowClass } = useActionPredictor();
+
+  useEffect(() => {
+    // PoC 백엔드 연동: 실패 시 기존 mock으로 자연스럽게 폴백(UX 결 유지).
+    // - 와이어프레임 최신본에 맞춰 "브리핑/신선도/알림"을 화면 단위로 묶어 내려받는다.
+    // - 백엔드가 아직 준비되지 않은 필드가 있어도 UI는 그대로 동작해야 하므로,
+    //   본 파일은 API-first + mock-fallback 패턴으로 유지한다.
+    let mounted = true;
+    getPocMobileHome()
+      .then((d) => {
+        if (mounted) setHomeData(d);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setHomeData({
+          store_id: "S001",
+          biz_date: "mock",
+          briefing: mockBriefing,
+          inventory: mockInventory,
+          notifications: mockNotifications,
+        });
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   /* 발주 승인 CTA */
   const handleOrderCta = () => {
@@ -238,11 +276,15 @@ export default function HomePage() {
   return (
     <div className="h-full overflow-y-auto hide-scrollbar px-4 py-4 pb-20">
       <BriefingCard
+        briefing={homeData?.briefing ?? mockBriefing}
         ctaGlowClass={glowClass(ACTIONS.HOME_ORDER_CTA)}
         onCtaClick={handleOrderCta}
       />
-      <InventoryLiveBoard onUrgentItemClick={handleUrgentItemClick} />
-      <NotificationList />
+      <InventoryLiveBoard
+        items={homeData?.inventory ?? mockInventory}
+        onUrgentItemClick={handleUrgentItemClick}
+      />
+      <NotificationList items={homeData?.notifications ?? mockNotifications} />
 
       <div className="h-4" />
 
